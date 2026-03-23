@@ -1,4 +1,4 @@
-package ru.vk.education.job.port;
+package ru.vk.education.job.app.port;
 
 import ru.vk.education.job.domain.Vacancy;
 

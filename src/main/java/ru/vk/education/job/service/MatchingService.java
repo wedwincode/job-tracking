@@ -4,7 +4,6 @@ import ru.vk.education.job.domain.Match;
 import ru.vk.education.job.domain.Skill;
 import ru.vk.education.job.domain.User;
 import ru.vk.education.job.domain.Vacancy;
-import ru.vk.education.job.port.VacancyStorage;
 
 import java.util.Comparator;
 import java.util.List;

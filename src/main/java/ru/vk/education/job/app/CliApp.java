@@ -5,8 +5,8 @@ import ru.vk.education.job.domain.Experience;
 import ru.vk.education.job.domain.Skill;
 import ru.vk.education.job.domain.User;
 import ru.vk.education.job.domain.Vacancy;
-import ru.vk.education.job.port.UserStorage;
-import ru.vk.education.job.port.VacancyStorage;
+import ru.vk.education.job.app.port.UserStorage;
+import ru.vk.education.job.app.port.VacancyStorage;
 import ru.vk.education.job.service.MatchingService;
 
 import java.util.ArrayList;
