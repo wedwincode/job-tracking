@@ -1,6 +1,8 @@
 package ru.vk.education.job;
 
 import ru.vk.education.job.app.CliApp;
+import ru.vk.education.job.app.port.CommandHistory;
+import ru.vk.education.job.infra.FileCommandHistory;
 import ru.vk.education.job.infra.InMemoryUserStorage;
 import ru.vk.education.job.infra.InMemoryVacancyStorage;
 import ru.vk.education.job.app.port.UserStorage;
@@ -10,7 +12,8 @@ public class Main {
     public static void main(String[] args) {
         UserStorage userStorage = InMemoryUserStorage.INSTANCE;
         VacancyStorage vacancyStorage = InMemoryVacancyStorage.INSTANCE;
+        CommandHistory commandHistory = new FileCommandHistory("history.log");
 
-        new CliApp(userStorage, vacancyStorage).run();
+        new CliApp(userStorage, vacancyStorage, commandHistory).run();
     }
 }

@@ -1,5 +1,6 @@
 package ru.vk.education.job.app;
 
+import ru.vk.education.job.app.port.CommandHistory;
 import ru.vk.education.job.domain.Company;
 import ru.vk.education.job.domain.Experience;
 import ru.vk.education.job.domain.Skill;
@@ -19,36 +20,102 @@ public class CliApp {
 
     private final UserStorage userStorage;
     private final VacancyStorage vacancyStorage;
+    private final CommandHistory commandHistory;
 
-    public CliApp(UserStorage userStorage, VacancyStorage vacancyStorage) {
+    public CliApp(UserStorage userStorage, VacancyStorage vacancyStorage, CommandHistory commandHistory) {
         this.userStorage = userStorage;
         this.vacancyStorage = vacancyStorage;
+        this.commandHistory = commandHistory;
     }
 
     public void run() {
+        restoreState();
         Scanner scanner = new Scanner(System.in);
         while (true) {
             String raw = scanner.nextLine();
-            if (raw.startsWith("user-list")) {
-                printUsers();
-            } else if (raw.startsWith("user")) {
-                User user = parseUser(raw);
-                userStorage.save(user);
-            } else if (raw.startsWith("job-list")) {
-                printVacancies();
-            } else if (raw.startsWith("job")) {
-                Vacancy vacancy = parseVacancy(raw);
-                vacancyStorage.save(vacancy);
-            } else if (raw.startsWith("suggest")) {
-                String username = parseUsername(raw);
-                User user = userStorage.getByName(username);
-                if (user == null) continue;
-                List<Vacancy> suggested = MatchingService.getSuggestions(user, vacancyStorage.getAll());
-                printVacancies(suggested);
-            } else if (raw.startsWith("exit")) {
+            boolean result = processUserCommand(raw);
+            if (!result) {
                 System.exit(0);
             }
         }
+    }
+
+    private void restoreState() {
+        List<String> commands = commandHistory.getAll();
+        for (String command : commands) {
+            if (isRestoreCommand(command)) {
+                applyRestoreCommand(command);
+            }
+        }
+    }
+
+    private boolean isRestoreCommand(String raw) {
+        return raw.startsWith("user ") || raw.startsWith("job ");
+    }
+
+    private void applyRestoreCommand(String raw) {
+        if (raw.startsWith("user ")) {
+            User user = parseUser(raw);
+            userStorage.save(user);
+        } else if (raw.startsWith("job ")) {
+            Vacancy vacancy = parseVacancy(raw);
+            vacancyStorage.save(vacancy);
+        }
+    }
+
+    private boolean processUserCommand(String raw) {
+        if (raw.equals("exit")) {
+            return false;
+        }
+
+        if (raw.equals("history")) {
+            printHistory();
+            commandHistory.save(raw);
+            return true;
+        }
+
+        if (raw.equals("user-list")) {
+            printUsers();
+            commandHistory.save(raw);
+            return true;
+        }
+
+        if (raw.equals("job-list")) {
+            printVacancies();
+            commandHistory.save(raw);
+            return true;
+        }
+
+        if (raw.startsWith("user ")) {
+            User user = parseUser(raw);
+            userStorage.save(user);
+            commandHistory.save(raw);
+            return true;
+        }
+
+        if (raw.startsWith("job ")) {
+            Vacancy vacancy = parseVacancy(raw);
+            vacancyStorage.save(vacancy);
+            commandHistory.save(raw);
+            return true;
+        }
+
+        if (raw.startsWith("suggest ")) {
+            String username = parseUsername(raw);
+            User user = userStorage.getByName(username);
+            if (user != null) {
+                List<Vacancy> suggestions = MatchingService.getSuggestions(user, vacancyStorage.getAll());
+                printVacancies(suggestions);
+            }
+            commandHistory.save(raw);
+            return true;
+        }
+
+        return true;
+    }
+
+    private void printHistory() {
+        commandHistory.getAll().forEach(System.out::println);
     }
 
     private static User parseUser(String raw) {
