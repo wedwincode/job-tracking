@@ -22,6 +22,13 @@ public class MatchingService {
                 .toList();
     }
 
+    public static long countMatches(User user, List<Vacancy> vacancies) {
+        return vacancies.stream()
+                .map(v -> calculateScore(user, v))
+                .filter(s -> s > 0)
+                .count();
+    }
+
     private static double calculateScore(User user, Vacancy vacancy) {
         Set<String> userSkills = user.skills().stream()
                 .map(Skill::value)

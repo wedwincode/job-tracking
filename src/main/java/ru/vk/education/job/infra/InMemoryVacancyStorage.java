@@ -4,6 +4,7 @@ import ru.vk.education.job.domain.Vacancy;
 import ru.vk.education.job.app.port.VacancyStorage;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -25,6 +26,8 @@ public enum InMemoryVacancyStorage implements VacancyStorage {
 
     @Override
     public List<Vacancy> getAll() {
-        return new ArrayList<>(vacanciesByTitle.values());
+        return vacanciesByTitle.values().stream()
+                .sorted(Comparator.comparing(Vacancy::title))
+                .toList();
     }
 }

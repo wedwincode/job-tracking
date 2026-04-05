@@ -7,13 +7,15 @@ import ru.vk.education.job.infra.InMemoryUserStorage;
 import ru.vk.education.job.infra.InMemoryVacancyStorage;
 import ru.vk.education.job.app.port.UserStorage;
 import ru.vk.education.job.app.port.VacancyStorage;
+import ru.vk.education.job.service.StatService;
 
 public class Main {
     public static void main(String[] args) {
         UserStorage userStorage = InMemoryUserStorage.INSTANCE;
         VacancyStorage vacancyStorage = InMemoryVacancyStorage.INSTANCE;
         CommandHistory commandHistory = new FileCommandHistory("history.log");
+        StatService statService = new StatService(userStorage, vacancyStorage);
 
-        new CliApp(userStorage, vacancyStorage, commandHistory).run();
+        new CliApp(userStorage, vacancyStorage, commandHistory, statService).run();
     }
 }

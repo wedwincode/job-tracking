@@ -9,6 +9,7 @@ import ru.vk.education.job.domain.Vacancy;
 import ru.vk.education.job.app.port.UserStorage;
 import ru.vk.education.job.app.port.VacancyStorage;
 import ru.vk.education.job.service.MatchingService;
+import ru.vk.education.job.service.StatService;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -21,11 +22,13 @@ public class CliApp {
     private final UserStorage userStorage;
     private final VacancyStorage vacancyStorage;
     private final CommandHistory commandHistory;
+    private final StatService statService;
 
-    public CliApp(UserStorage userStorage, VacancyStorage vacancyStorage, CommandHistory commandHistory) {
+    public CliApp(UserStorage userStorage, VacancyStorage vacancyStorage, CommandHistory commandHistory, StatService statService) {
         this.userStorage = userStorage;
         this.vacancyStorage = vacancyStorage;
         this.commandHistory = commandHistory;
+        this.statService = statService;
     }
 
     public void run() {
@@ -111,6 +114,22 @@ public class CliApp {
             return true;
         }
 
+        if (raw.startsWith("stat ")) {
+            if (raw.startsWith("stat --exp")) {
+                List<Vacancy> vacancies = statService.getVacanciesByExp(parseStatParam(raw, "exp"));
+                printVacancies(vacancies);
+            } else if (raw.startsWith("stat --match")) {
+                List<User> users = statService.getUsersByMatch(parseStatParam(raw, "match"));
+                printUsers(users);
+            } else if (raw.startsWith("stat --top-skills")) {
+                List<Skill> skills = statService.getUsersByTopSkill(parseStatParam(raw, "top-skills"));
+                printSkills(skills);
+            } else {
+                throw new IllegalArgumentException("stat syntax is invalid");
+            }
+            commandHistory.save(raw);
+        }
+
         return true;
     }
 
@@ -179,13 +198,25 @@ public class CliApp {
         return username;
     }
 
+    private static int parseStatParam(String raw, String param) {
+        String value = raw.substring(("stat --" + param).length()).trim();
+        if (value.isBlank()) {
+            throw new IllegalArgumentException("stat syntax is invalid");
+        }
+        return Integer.parseInt(value);
+    }
+
     private static String[] split(String raw, String prefix) {
         return raw.replace(prefix, "").strip().split("\\s+");
     }
 
     private void printUsers() {
+        printUsers(userStorage.getAll());
+    }
+
+    private static void printUsers(List<User> users) {
         StringBuilder sb = new StringBuilder();
-        for (User user: userStorage.getAll()) {
+        for (User user: users) {
             sb.append(user.name()).append(" ");
 
             String skills = user.skills().stream()
@@ -202,7 +233,7 @@ public class CliApp {
         printVacancies(vacancyStorage.getAll());
     }
 
-    private void printVacancies(List<Vacancy> vacancies) {
+    private static void printVacancies(List<Vacancy> vacancies) {
         StringBuilder sb = new StringBuilder();
         for (Vacancy vacancy: vacancies) {
             sb.append(vacancy.title())
@@ -211,5 +242,11 @@ public class CliApp {
                     .append(System.lineSeparator());
         }
         System.out.print(sb);
+    }
+
+    private void printSkills(List<Skill> skills) {
+        for (Skill skill: skills) {
+            System.out.println(skill.value());
+        }
     }
 }
