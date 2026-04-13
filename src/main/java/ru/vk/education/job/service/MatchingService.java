@@ -1,19 +1,41 @@
 package ru.vk.education.job.service;
 
+import ru.vk.education.job.app.port.UserStorage;
+import ru.vk.education.job.app.port.VacancyStorage;
 import ru.vk.education.job.domain.Match;
 import ru.vk.education.job.domain.Skill;
 import ru.vk.education.job.domain.User;
 import ru.vk.education.job.domain.Vacancy;
 
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 public class MatchingService {
+    private final VacancyStorage vacancyStorage;
 
-    public static List<Vacancy> getSuggestions(User user, List<Vacancy> vacancies) {
-        return vacancies.stream()
+    public MatchingService(VacancyStorage vacancyStorage) {
+        this.vacancyStorage = vacancyStorage;
+    }
+
+    public Map<User, Vacancy> getSuggestionsForUsers(List<User> users) {
+        Map<User, Vacancy> userVacancyMap = new HashMap<>();
+        for (User u: users) {
+            List<Vacancy> suggestions = getSuggestions(u);
+            Vacancy suggestion = null;
+            if (!suggestions.isEmpty()) {
+                suggestion = suggestions.get(0);
+            }
+            userVacancyMap.put(u, suggestion);
+        }
+        return userVacancyMap;
+    }
+
+    public List<Vacancy> getSuggestions(User user) {
+        return vacancyStorage.getAll().stream()
                 .map(vacancy -> new Match(user, vacancy, calculateScore(user, vacancy)))
                 .filter(match -> match.score() > 0)
                 .sorted(Comparator.comparingDouble(Match::score).reversed())
@@ -22,14 +44,14 @@ public class MatchingService {
                 .toList();
     }
 
-    public static long countMatches(User user, List<Vacancy> vacancies) {
-        return vacancies.stream()
+    public long countMatches(User user) {
+        return vacancyStorage.getAll().stream()
                 .map(v -> calculateScore(user, v))
                 .filter(s -> s > 0)
                 .count();
     }
 
-    private static double calculateScore(User user, Vacancy vacancy) {
+    private double calculateScore(User user, Vacancy vacancy) {
         Set<String> userSkills = user.skills().stream()
                 .map(Skill::value)
                 .collect(Collectors.toSet());

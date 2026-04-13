@@ -8,37 +8,90 @@ import ru.vk.education.job.domain.User;
 import ru.vk.education.job.domain.Vacancy;
 import ru.vk.education.job.app.port.UserStorage;
 import ru.vk.education.job.app.port.VacancyStorage;
+import ru.vk.education.job.service.BackgroundJobRecommender;
 import ru.vk.education.job.service.MatchingService;
 import ru.vk.education.job.service.StatService;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Scanner;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 public class CliApp {
+    private static final long INITIAL_DELAY = 10;
+    private static final long SCHEDULING_PERIOD = 60;
+
+    private static final String USER_PREFIX = "user ";
+    private static final String JOB_PREFIX = "job ";
 
     private final UserStorage userStorage;
     private final VacancyStorage vacancyStorage;
     private final CommandHistory commandHistory;
+    private final MatchingService matchingService;
     private final StatService statService;
+    private final ScheduledExecutorService executor;
 
-    public CliApp(UserStorage userStorage, VacancyStorage vacancyStorage, CommandHistory commandHistory, StatService statService) {
+    public CliApp(
+            UserStorage userStorage,
+            VacancyStorage vacancyStorage,
+            CommandHistory commandHistory,
+            MatchingService matchingService,
+            StatService statService
+    ) {
         this.userStorage = userStorage;
         this.vacancyStorage = vacancyStorage;
         this.commandHistory = commandHistory;
+        this.matchingService = matchingService;
         this.statService = statService;
+        this.executor = Executors.newSingleThreadScheduledExecutor();
     }
 
     public void run() {
         restoreState();
+        BackgroundJobRecommender jobRecommender = new BackgroundJobRecommender(userStorage, matchingService);
+        executor.scheduleAtFixedRate(
+                jobRecommender,
+                INITIAL_DELAY,
+                SCHEDULING_PERIOD,
+                TimeUnit.SECONDS
+        );
         Scanner scanner = new Scanner(System.in);
         while (true) {
             String raw = scanner.nextLine();
             boolean result = processUserCommand(raw);
             if (!result) {
+                stopExecutor();
                 System.exit(0);
+            }
+        }
+    }
+
+    private void stopExecutor() {
+        executor.shutdown();
+
+        try {
+            boolean isStopped = executor.awaitTermination(5, TimeUnit.SECONDS);
+            if (!isStopped) {
+                System.err.println("Executor did not terminate within timeout, forcing shutdown...");
+                executor.shutdownNow();
+                if (!executor.awaitTermination(5, TimeUnit.SECONDS)) {
+                    System.err.println("Executor did not terminate after forced shutdown");
+                }
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            executor.shutdownNow();
+            try {
+                if (!executor.awaitTermination(5, TimeUnit.SECONDS)) {
+                    System.err.println("Executor did not terminate after forced shutdown");
+                }
+            } catch (InterruptedException ex) {
+                Thread.currentThread().interrupt();
             }
         }
     }
@@ -53,14 +106,14 @@ public class CliApp {
     }
 
     private boolean isRestoreCommand(String raw) {
-        return raw.startsWith("user ") || raw.startsWith("job ");
+        return raw.startsWith(USER_PREFIX) || raw.startsWith(JOB_PREFIX);
     }
 
     private void applyRestoreCommand(String raw) {
-        if (raw.startsWith("user ")) {
+        if (raw.startsWith(USER_PREFIX)) {
             User user = parseUser(raw);
             userStorage.save(user);
-        } else if (raw.startsWith("job ")) {
+        } else if (raw.startsWith(JOB_PREFIX)) {
             Vacancy vacancy = parseVacancy(raw);
             vacancyStorage.save(vacancy);
         }
@@ -89,14 +142,14 @@ public class CliApp {
             return true;
         }
 
-        if (raw.startsWith("user ")) {
+        if (raw.startsWith(USER_PREFIX)) {
             User user = parseUser(raw);
             userStorage.save(user);
             commandHistory.save(raw);
             return true;
         }
 
-        if (raw.startsWith("job ")) {
+        if (raw.startsWith(JOB_PREFIX)) {
             Vacancy vacancy = parseVacancy(raw);
             vacancyStorage.save(vacancy);
             commandHistory.save(raw);
@@ -107,7 +160,7 @@ public class CliApp {
             String username = parseUsername(raw);
             User user = userStorage.getByName(username);
             if (user != null) {
-                List<Vacancy> suggestions = MatchingService.getSuggestions(user, vacancyStorage.getAll());
+                List<Vacancy> suggestions = matchingService.getSuggestions(user);
                 printVacancies(suggestions);
             }
             commandHistory.save(raw);

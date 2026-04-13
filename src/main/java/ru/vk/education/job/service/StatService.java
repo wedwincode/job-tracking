@@ -15,10 +15,16 @@ import java.util.stream.Collectors;
 public class StatService {
     private final UserStorage userStorage;
     private final VacancyStorage vacancyStorage;
+    private final MatchingService matchingService;
 
-    public StatService(UserStorage userStorage, VacancyStorage vacancyStorage) {
+    public StatService(
+            UserStorage userStorage,
+            VacancyStorage vacancyStorage,
+            MatchingService matchingService
+    ) {
         this.userStorage = userStorage;
         this.vacancyStorage = vacancyStorage;
+        this.matchingService = matchingService;
     }
 
     public List<Vacancy> getVacanciesByExp(int exp) {
@@ -29,10 +35,8 @@ public class StatService {
     }
 
     public List<User> getUsersByMatch(int match) {
-        List<Vacancy> vacancies = vacancyStorage.getAll();
-
         return userStorage.getAll().stream()
-                .filter(user -> MatchingService.countMatches(user, vacancies) >= match)
+                .filter(user -> matchingService.countMatches(user) >= match)
                 .sorted(Comparator.comparing(User::name))
                 .toList();
     }
