@@ -8,14 +8,13 @@ import ru.vk.education.job.domain.User;
 import ru.vk.education.job.domain.Vacancy;
 import ru.vk.education.job.app.port.UserStorage;
 import ru.vk.education.job.app.port.VacancyStorage;
-import ru.vk.education.job.service.BackgroundJobRecommender;
+import ru.vk.education.job.service.BackgroundJobRecommenderOld;
 import ru.vk.education.job.service.MatchingService;
-import ru.vk.education.job.service.StatService;
+import ru.vk.education.job.service.StatServiceOld;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 import java.util.Scanner;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -33,7 +32,7 @@ public class CliApp {
     private final VacancyStorage vacancyStorage;
     private final CommandHistory commandHistory;
     private final MatchingService matchingService;
-    private final StatService statService;
+    private final StatServiceOld statServiceOld;
     private final ScheduledExecutorService executor;
 
     public CliApp(
@@ -41,19 +40,19 @@ public class CliApp {
             VacancyStorage vacancyStorage,
             CommandHistory commandHistory,
             MatchingService matchingService,
-            StatService statService
+            StatServiceOld statServiceOld
     ) {
         this.userStorage = userStorage;
         this.vacancyStorage = vacancyStorage;
         this.commandHistory = commandHistory;
         this.matchingService = matchingService;
-        this.statService = statService;
+        this.statServiceOld = statServiceOld;
         this.executor = Executors.newSingleThreadScheduledExecutor();
     }
 
     public void run() {
         restoreState();
-        BackgroundJobRecommender jobRecommender = new BackgroundJobRecommender(userStorage, matchingService);
+        BackgroundJobRecommenderOld jobRecommender = new BackgroundJobRecommenderOld(userStorage, matchingService);
         executor.scheduleAtFixedRate(
                 jobRecommender,
                 INITIAL_DELAY,
@@ -169,13 +168,13 @@ public class CliApp {
 
         if (raw.startsWith("stat ")) {
             if (raw.startsWith("stat --exp")) {
-                List<Vacancy> vacancies = statService.getVacanciesByExp(parseStatParam(raw, "exp"));
+                List<Vacancy> vacancies = statServiceOld.getVacanciesByExp(parseStatParam(raw, "exp"));
                 printVacancies(vacancies);
             } else if (raw.startsWith("stat --match")) {
-                List<User> users = statService.getUsersByMatch(parseStatParam(raw, "match"));
+                List<User> users = statServiceOld.getUsersByMatch(parseStatParam(raw, "match"));
                 printUsers(users);
             } else if (raw.startsWith("stat --top-skills")) {
-                List<Skill> skills = statService.getUsersByTopSkill(parseStatParam(raw, "top-skills"));
+                List<Skill> skills = statServiceOld.getUsersByTopSkill(parseStatParam(raw, "top-skills"));
                 printSkills(skills);
             } else {
                 throw new IllegalArgumentException("stat syntax is invalid");

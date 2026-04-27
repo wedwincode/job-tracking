@@ -1,6 +1,5 @@
 package ru.vk.education.job.service;
 
-import ru.vk.education.job.app.port.UserStorage;
 import ru.vk.education.job.app.port.VacancyStorage;
 import ru.vk.education.job.domain.Match;
 import ru.vk.education.job.domain.Skill;
